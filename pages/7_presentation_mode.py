@@ -17,7 +17,7 @@ from modules.contour import generate_contour_grid
 from modules.analysis import compute_elevation_stats, compute_slope_stats, simulate_road_construction
 from modules.viz import MAROON, GOLD, INK, SLOPE_GROUP_COLORS, build_terrain_3d_figure, build_contour_figure
 
-SAMPLE_DATA_PATH = Path(__file__).parent.parent / "data" / "survey_points.csv"
+SAMPLE_DATA_PATH = Path(__file__).parent.parent / "data" / "survey_points_Example#1.csv"
 
 STEP_TITLES = [
     "Survey Points",

@@ -17,7 +17,7 @@ from modules.contour import generate_contour_grid
 from modules.analysis import compute_elevation_stats, compute_slope_stats, simulate_road_construction
 from modules.viz import SLOPE_GROUP_COLORS, build_contour_figure, build_terrain_3d_figure
 
-SAMPLE_DATA_PATH = Path(__file__).parent.parent / "data" / "survey_points.csv"
+SAMPLE_DATA_PATH = Path(__file__).parent.parent / "data" / "survey_points_Example#1.csv"
 
 st.subheader("AUN-QA Exhibit Dashboard")
 st.caption("Consolidated view: survey data, terrain surface, contour map, and engineering summary.")

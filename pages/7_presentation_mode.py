@@ -1,7 +1,7 @@
 """
 pages/7_presentation_mode.py
 
-Presentation Mode — one-click guided demonstration for AUN-QA accreditation
+Presentation Mode — one-click guided demonstration for laboratory
 visits. Auto-loads sample survey data and walks through four narrated
 steps: Survey Points -> Terrain Surface -> Contour Map -> Engineering
 Decision.
@@ -17,7 +17,7 @@ from modules.contour import generate_contour_grid
 from modules.analysis import compute_elevation_stats, compute_slope_stats, simulate_road_construction
 from modules.viz import MAROON, GOLD, INK, SLOPE_GROUP_COLORS, build_terrain_3d_figure, build_contour_figure
 
-SAMPLE_DATA_PATH = Path(__file__).parent.parent / "data" / "survey_points_Example#1.csv"
+SAMPLE_DATA_PATH = Path(__file__).parent.parent / "data" / "survey_points.csv"
 
 STEP_TITLES = [
     "Survey Points",
@@ -27,7 +27,7 @@ STEP_TITLES = [
 ]
 
 st.subheader("Presentation Mode")
-st.caption("A guided, one-click walkthrough for AUN-QA accreditation demonstrations.")
+st.caption("A guided, one-click walkthrough for laboratory demonstrations.")
 
 if "presentation_step" not in st.session_state:
     st.session_state["presentation_step"] = 0  # 0 = not started
@@ -68,7 +68,7 @@ if st.session_state["presentation_step"] == 0:
             unsafe_allow_html=True,
         )
         st.button(
-            "▶  Start AUN-QA Demonstration",
+            "▶  Start Demonstration",
             on_click=_start_demo,
             type="primary",
             width="stretch",

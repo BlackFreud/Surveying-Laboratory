@@ -1,6 +1,6 @@
 # Digital Terrain Model (DTM) Simulator
 
-An interactive Digital Terrain Model simulator built for the **Civil Engineering Surveying Laboratory** exhibit at the **University of Mindanao**, College of Engineering Education (CEE). Built as an AUN-QA interactive laboratory innovation exhibit.
+An interactive Digital Terrain Model simulator built for the **Civil Engineering Surveying Laboratory** at the **University of Mindanao**, College of Engineering Education (CEE). Built as an interactive laboratory innovation exhibit.
 
 The app demonstrates the full surveying-to-engineering workflow:
 
@@ -10,7 +10,7 @@ The app demonstrates the full surveying-to-engineering workflow:
 
 | Page | What it does |
 |---|---|
-| **AUN-QA Dashboard** *(default landing page)* | Single consolidated screen for accreditation visits: upload or one-click-load sample data, 2D contour map and 3D terrain side by side, and a condensed Elevation / Slope / Volume summary |
+| **Exhibit Dashboard** *(default landing page)* | Single consolidated screen for laboratory demonstrations: upload or one-click-load sample data, 2D contour map and 3D terrain side by side, and a condensed Elevation / Slope / Volume summary |
 | **Presentation Mode** | One-click guided demonstration — auto-loads sample data and walks through four narrated steps (Survey Points → Terrain Surface → Contour Map → Engineering Decision) with Back/Next/Restart controls |
 | **Survey Data Input** | Manual entry (editable table) or CSV upload of survey points, with validation (missing values, duplicate point IDs, invalid coordinates) and a PRS92 coordinate-zone reference note |
 | **Terrain Surface Generation** | Builds a Triangulated Irregular Network (TIN) via Delaunay triangulation; shows a 2D triangulation view and an interactive 3D terrain surface |
@@ -40,7 +40,7 @@ DTM_Simulator/
 ├── app.py                                 # Entrypoint: page config, global CSS, branding header, navigation
 ├── requirements.txt
 ├── pages/
-│   ├── 6_aunqa_dashboard.py               # Consolidated exhibit dashboard (default landing page)
+│   ├── 6_dashboard.py                     # Consolidated exhibit dashboard (default landing page)
 │   ├── 7_presentation_mode.py             # Guided one-click demonstration mode
 │   ├── 1_survey_data_input.py
 │   ├── 2_terrain_surface_generation.py
@@ -74,7 +74,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-The app opens at `http://localhost:8501` on the **AUN-QA Dashboard**. Click **Load Sample Data** to try every page immediately, or go to **Presentation Mode** for a guided walkthrough.
+The app opens at `http://localhost:8501` on the **Exhibit Dashboard**. Click **Load Sample Data** to try every page immediately, or go to **Presentation Mode** for a guided walkthrough.
 
 ## Deployment
 
@@ -93,11 +93,14 @@ Deployed for free on [Streamlit Community Cloud](https://share.streamlit.io):
 - [x] Phase 3 — Contour Generation
 - [x] Phase 4 — Engineering Analysis
 - [x] Phase 5 — Scenario Simulation (Road Construction)
-- [x] Phase 6 — Consolidated AUN-QA exhibit dashboard
+- [x] Phase 6 — Consolidated exhibit dashboard
 - [x] Phase 7 — One-click presentation / demonstration mode
-- [ ] Phase 8 — User manual, lab activity sheet, AUN-QA evidence folder
+- [ ] Phase 8 — User manual, lab activity sheet, evidence folder
 
 ## Credits
+
+**Developed by Engr. JF Item**
+Laboratory Custodian, Surveying Laboratory
 
 **University of Mindanao** — Civil Engineering Laboratory
 College of Engineering Education (CEE)

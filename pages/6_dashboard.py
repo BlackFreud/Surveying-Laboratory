@@ -1,7 +1,7 @@
 """
 pages/6_aunqa_dashboard.py
 
-AUN-QA Exhibit Dashboard — a single consolidated screen for accreditation
+Exhibit Dashboard — a single consolidated screen for laboratory
 demonstrations: upload/load data, 2D contour map, 3D terrain model, and a
 condensed Elevation / Slope / Volume engineering summary, per the original
 exhibit spec's dashboard layout.
@@ -17,9 +17,9 @@ from modules.contour import generate_contour_grid
 from modules.analysis import compute_elevation_stats, compute_slope_stats, simulate_road_construction
 from modules.viz import SLOPE_GROUP_COLORS, build_contour_figure, build_terrain_3d_figure
 
-SAMPLE_DATA_PATH = Path(__file__).parent.parent / "data" / "survey_points_Example#1.csv"
+SAMPLE_DATA_PATH = Path(__file__).parent.parent / "data" / "survey_points.csv"
 
-st.subheader("AUN-QA Exhibit Dashboard")
+st.subheader("Exhibit Dashboard")
 st.caption("Consolidated view: survey data, terrain surface, contour map, and engineering summary.")
 
 # ---------------------------------------------------------------------------
@@ -157,6 +157,8 @@ st.markdown(
     "<div style='text-align:center;margin-top:32px;padding-top:16px;"
     "border-top:2px solid #AE2431;color:#6B5E58;font-family:\"IBM Plex Mono\",monospace;"
     "font-size:0.8rem;letter-spacing:0.05em;'>"
-    "SURVEYING LABORATORY &nbsp;&middot;&nbsp; UNIVERSITY OF MINDANAO</div>",
+    "SURVEYING LABORATORY &nbsp;&middot;&nbsp; UNIVERSITY OF MINDANAO"
+    "<div style='margin-top:4px;font-size:0.7rem;letter-spacing:0.02em;color:#9C9088;'>"
+    "Developed by Engr. JF Item &mdash; Laboratory Custodian</div></div>",
     unsafe_allow_html=True,
 )

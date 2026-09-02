@@ -148,7 +148,7 @@ st.markdown(
 # the manual sidebar-radio routing used in earlier phases)
 # ---------------------------------------------------------------------------
 pages = [
-    st.Page(PAGES_DIR / "6_aunqa_dashboard.py", title="AUN-QA Dashboard", icon="🏛️", default=True),
+    st.Page(PAGES_DIR / "6_dashboard.py", title="Exhibit Dashboard", icon="🏛️", default=True),
     st.Page(PAGES_DIR / "7_presentation_mode.py", title="Presentation Mode", icon="🎬"),
     st.Page(PAGES_DIR / "1_survey_data_input.py", title="Survey Data Input", icon="📋"),
     st.Page(PAGES_DIR / "2_terrain_surface_generation.py", title="Terrain Surface Generation", icon="⛰️"),
@@ -159,6 +159,7 @@ pages = [
 pg = st.navigation(pages)
 
 st.sidebar.markdown("---")
-st.sidebar.caption("AUN-QA Interactive Laboratory Exhibit")
+st.sidebar.caption("Surveying Laboratory Interactive Exhibit")
+st.sidebar.caption("Developed by Engr. JF Item — Laboratory Custodian")
 
 pg.run()

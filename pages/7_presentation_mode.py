@@ -2,12 +2,13 @@
 pages/7_presentation_mode.py
 
 Presentation Mode — one-click guided demonstration for laboratory
-visits. Auto-loads sample survey data and walks through four narrated
+visits. Loads a chosen sample dataset and walks through four narrated
 steps: Survey Points -> Terrain Surface -> Contour Map -> Engineering
-Decision.
+Decision. Supports both manual Back/Next navigation and a timed
+auto-advance mode for unattended or hands-free presenting.
 """
 
-from pathlib import Path
+import time
 
 import streamlit as st
 
@@ -16,8 +17,7 @@ from modules.terrain_model import generate_tin, build_surface_mesh
 from modules.contour import generate_contour_grid
 from modules.analysis import compute_elevation_stats, compute_slope_stats, simulate_road_construction
 from modules.viz import MAROON, GOLD, INK, SLOPE_GROUP_COLORS, build_terrain_3d_figure, build_contour_figure
-
-SAMPLE_DATA_PATH = Path(__file__).parent.parent / "data" / "survey_points.csv"
+from modules.samples import SAMPLE_DATASETS
 
 STEP_TITLES = [
     "Survey Points",
@@ -26,27 +26,36 @@ STEP_TITLES = [
     "Engineering Decision",
 ]
 
+AUTO_ADVANCE_INTERVALS = [5, 8, 10, 15]
+
 st.subheader("Presentation Mode")
 st.caption("A guided, one-click walkthrough for laboratory demonstrations.")
 
 if "presentation_step" not in st.session_state:
     st.session_state["presentation_step"] = 0  # 0 = not started
+if "auto_advance_enabled" not in st.session_state:
+    st.session_state["auto_advance_enabled"] = True
+if "auto_advance_interval" not in st.session_state:
+    st.session_state["auto_advance_interval"] = 8
 
 
-def _start_demo():
-    with open(SAMPLE_DATA_PATH, "rb") as f:
+def _start_demo(sample_index: int):
+    with open(SAMPLE_DATASETS[sample_index]["path"], "rb") as f:
         df, error = load_csv_points(f)
     if error is None and not validate_points(df):
         st.session_state["survey_points"] = df
     st.session_state["presentation_step"] = 1
+    st.session_state["step_started_at"] = time.time()
 
 
 def _go_next():
     st.session_state["presentation_step"] = min(4, st.session_state["presentation_step"] + 1)
+    st.session_state["step_started_at"] = time.time()
 
 
 def _go_back():
     st.session_state["presentation_step"] = max(1, st.session_state["presentation_step"] - 1)
+    st.session_state["step_started_at"] = time.time()
 
 
 def _restart():
@@ -54,22 +63,42 @@ def _restart():
 
 
 # ---------------------------------------------------------------------------
-# Not started yet — show the start button
+# Not started yet — show sample choice, auto-advance options, and start button
 # ---------------------------------------------------------------------------
 if st.session_state["presentation_step"] == 0:
-    st.write("")
     st.write("")
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown(
             "<div style='text-align:center;'>"
-            "<p style='color:#6B5E58;'>This will load the sample survey dataset and step through "
-            "the full field-data-to-engineering-decision workflow.</p></div>",
+            "<p style='color:#6B5E58;'>Choose a sample terrain, then start the guided walkthrough "
+            "of the full field-data-to-engineering-decision workflow.</p></div>",
             unsafe_allow_html=True,
         )
+
+        sample_index = st.selectbox(
+            "Sample dataset",
+            options=range(len(SAMPLE_DATASETS)),
+            format_func=lambda i: SAMPLE_DATASETS[i]["label"],
+            key="presentation_sample_choice",
+        )
+        st.caption(SAMPLE_DATASETS[sample_index]["description"])
+
+        col_toggle, col_interval = st.columns(2)
+        with col_toggle:
+            st.checkbox("Auto-advance slides", key="auto_advance_enabled")
+        with col_interval:
+            st.selectbox(
+                "Seconds per slide",
+                options=AUTO_ADVANCE_INTERVALS,
+                key="auto_advance_interval",
+                disabled=not st.session_state["auto_advance_enabled"],
+            )
+
         st.button(
             "▶  Start Demonstration",
             on_click=_start_demo,
+            args=(sample_index,),
             type="primary",
             width="stretch",
         )
@@ -214,7 +243,11 @@ elif step == 4:
 # Navigation controls
 # ---------------------------------------------------------------------------
 st.divider()
-nav_back, nav_restart, nav_next = st.columns([1, 1, 1])
+
+auto_on = st.session_state["auto_advance_enabled"]
+interval = st.session_state["auto_advance_interval"]
+
+nav_back, nav_restart, nav_next, nav_auto = st.columns([1, 1, 1, 1.3])
 with nav_back:
     st.button("⬅ Back", on_click=_go_back, disabled=(step == 1), width="stretch")
 with nav_restart:
@@ -224,3 +257,24 @@ with nav_next:
         st.button("Next ➡", on_click=_go_next, type="primary", width="stretch")
     else:
         st.button("Finish ✓", on_click=_restart, type="primary", width="stretch")
+with nav_auto:
+    st.checkbox("Auto-advance", key="auto_advance_enabled", value=auto_on)
+
+# ---------------------------------------------------------------------------
+# Auto-advance timer — ticks the page every ~1s while enabled, advancing to
+# the next step once the configured interval has elapsed. Stops on its own
+# after Step 4 rather than looping, so an unattended kiosk doesn't restart
+# without a deliberate click.
+# ---------------------------------------------------------------------------
+if st.session_state["auto_advance_enabled"] and step < 4:
+    elapsed = time.time() - st.session_state.get("step_started_at", time.time())
+    remaining = interval - elapsed
+    if remaining <= 0:
+        _go_next()
+        st.rerun()
+    else:
+        st.caption(f"⏱ Auto-advancing in {remaining:.0f}s — untick Auto-advance to pause.")
+        time.sleep(min(1.0, remaining))
+        st.rerun()
+elif st.session_state["auto_advance_enabled"] and step == 4:
+    st.caption("✓ Presentation complete — click Restart to run it again.")

@@ -7,8 +7,6 @@ condensed Elevation / Slope / Volume engineering summary, per the original
 exhibit spec's dashboard layout.
 """
 
-from pathlib import Path
-
 import streamlit as st
 
 from modules.data_processing import load_csv_points, validate_points, summarize_points
@@ -16,8 +14,7 @@ from modules.terrain_model import generate_tin, build_surface_mesh
 from modules.contour import generate_contour_grid
 from modules.analysis import compute_elevation_stats, compute_slope_stats, simulate_road_construction
 from modules.viz import SLOPE_GROUP_COLORS, build_contour_figure, build_terrain_3d_figure
-
-SAMPLE_DATA_PATH = Path(__file__).parent.parent / "data" / "survey_points.csv"
+from modules.samples import SAMPLE_DATASETS
 
 st.subheader("Exhibit Dashboard")
 st.caption("Consolidated view: survey data, terrain surface, contour map, and engineering summary.")
@@ -30,15 +27,25 @@ survey_df = st.session_state.get("survey_points")
 
 with st.container(border=True):
     st.markdown("**Upload Survey Data**")
-    col_upload, col_sample = st.columns([3, 1])
+    col_upload, col_sample_select, col_sample_btn = st.columns([2.4, 2, 1])
 
     with col_upload:
         uploaded_file = st.file_uploader(
             "Upload survey_points.csv", type=["csv"], key="dashboard_csv_uploader",
             label_visibility="collapsed",
         )
-    with col_sample:
-        load_sample = st.button("Load Sample Data", width="stretch")
+    with col_sample_select:
+        sample_choice = st.selectbox(
+            "Sample dataset",
+            options=range(len(SAMPLE_DATASETS)),
+            format_func=lambda i: SAMPLE_DATASETS[i]["label"],
+            key="dashboard_sample_choice",
+            label_visibility="collapsed",
+        )
+    with col_sample_btn:
+        load_sample = st.button("Load Sample", width="stretch")
+
+    st.caption(SAMPLE_DATASETS[sample_choice]["description"])
 
     if uploaded_file is not None:
         new_df, csv_error = load_csv_points(uploaded_file)
@@ -53,7 +60,7 @@ with st.container(border=True):
                 survey_df = new_df
 
     if load_sample:
-        with open(SAMPLE_DATA_PATH, "rb") as f:
+        with open(SAMPLE_DATASETS[sample_choice]["path"], "rb") as f:
             new_df, csv_error = load_csv_points(f)
         if csv_error:
             st.error(csv_error)

@@ -7,14 +7,14 @@ proposed level road elevation, with DPWH reference embankment slopes.
 
 import streamlit as st
 
-from modules.terrain_model import generate_tin, build_surface_mesh
 from modules.analysis import (
-    simulate_road_construction,
-    DPWH_MIN_FILL_SLOPE,
-    DPWH_CUT_SLOPE_SOFT_ROCK,
     DPWH_CUT_SLOPE_HARD_ROCK,
+    DPWH_CUT_SLOPE_SOFT_ROCK,
+    DPWH_MIN_FILL_SLOPE,
+    simulate_road_construction,
 )
-from modules.viz import build_terrain_3d_figure, build_cutfill_figure
+from modules.terrain_model import build_surface_mesh, generate_tin
+from modules.viz import MUTED, build_cutfill_figure, build_terrain_3d_figure
 
 st.subheader("Scenario Simulation — Road Construction")
 st.caption("Estimate cut and fill earthwork for a proposed level road elevation.")
@@ -48,10 +48,11 @@ else:
 
         sim = simulate_road_construction(survey_df, tin, road_elevation)
 
+        # SAFETY: HTML is entirely server-generated; no user input is interpolated.
         st.markdown(
-            "<div style='color:#6B5E58;font-size:0.8em;'>Estimated via the average-end-area "
-            "method over each triangulated surface panel — a planning-level approximation, "
-            "not a certified quantity survey.</div>",
+            f"<div style='color:{MUTED};font-size:0.8em;'>Estimated via the average-end-area "
+            f"method over each triangulated surface panel — a planning-level approximation, "
+            f"not a certified quantity survey.</div>",
             unsafe_allow_html=True,
         )
         st.write("")

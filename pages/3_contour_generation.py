@@ -34,5 +34,9 @@ else:
     if grid["error"]:
         st.warning(grid["error"])
     else:
-        st.success(f"Contour Interval: {interval} m — Generated: {grid['n_lines']} contour lines")
-        st.plotly_chart(build_contour_figure(grid, interval, survey_df), width="stretch")
+        st.success(
+            f"Contour Interval: {interval} m — Generated: {grid['n_lines']} contour lines"
+        )
+        st.plotly_chart(
+            build_contour_figure(grid, interval, survey_df), width="stretch"
+        )

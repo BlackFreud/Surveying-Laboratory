@@ -12,12 +12,24 @@ import time
 
 import streamlit as st
 
-from modules.data_processing import load_csv_points, validate_points, summarize_points
-from modules.terrain_model import generate_tin, build_surface_mesh
+from modules.analysis import (
+    compute_elevation_stats,
+    compute_slope_stats,
+    simulate_road_construction,
+)
+from modules.components import render_engineering_summary
 from modules.contour import generate_contour_grid
-from modules.analysis import compute_elevation_stats, compute_slope_stats, simulate_road_construction
-from modules.viz import MAROON, GOLD, INK, SLOPE_GROUP_COLORS, build_terrain_3d_figure, build_contour_figure
+from modules.data_processing import load_csv_points, summarize_points, validate_points
 from modules.samples import SAMPLE_DATASETS
+from modules.terrain_model import build_surface_mesh, generate_tin
+from modules.viz import (
+    DISABLED,
+    GOLD,
+    MAROON,
+    MUTED,
+    build_contour_figure,
+    build_terrain_3d_figure,
+)
 
 STEP_TITLES = [
     "Survey Points",
@@ -39,22 +51,33 @@ if "auto_advance_interval" not in st.session_state:
     st.session_state["auto_advance_interval"] = 8
 
 
-def _start_demo(sample_index: int):
+def _start_demo(sample_index: int) -> None:
     with open(SAMPLE_DATASETS[sample_index]["path"], "rb") as f:
         df, error = load_csv_points(f)
-    if error is None and not validate_points(df):
-        st.session_state["survey_points"] = df
+    if error is not None:
+        st.session_state["presentation_error"] = error
+        return
+    issues = validate_points(df)
+    if issues:
+        st.session_state["presentation_error"] = "; ".join(issues)
+        return
+    st.session_state["survey_points"] = df
+    st.session_state.pop("presentation_error", None)
     st.session_state["presentation_step"] = 1
     st.session_state["step_started_at"] = time.time()
 
 
 def _go_next():
-    st.session_state["presentation_step"] = min(4, st.session_state["presentation_step"] + 1)
+    st.session_state["presentation_step"] = min(
+        4, st.session_state["presentation_step"] + 1
+    )
     st.session_state["step_started_at"] = time.time()
 
 
 def _go_back():
-    st.session_state["presentation_step"] = max(1, st.session_state["presentation_step"] - 1)
+    st.session_state["presentation_step"] = max(
+        1, st.session_state["presentation_step"] - 1
+    )
     st.session_state["step_started_at"] = time.time()
 
 
@@ -69,10 +92,11 @@ if st.session_state["presentation_step"] == 0:
     st.write("")
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        # SAFETY: HTML is entirely server-generated; no user input is interpolated.
         st.markdown(
-            "<div style='text-align:center;'>"
-            "<p style='color:#6B5E58;'>Choose a sample terrain, then start the guided walkthrough "
-            "of the full field-data-to-engineering-decision workflow.</p></div>",
+            f"<div style='text-align:center;'>"
+            f"<p style='color:{MUTED};'>Choose a sample terrain, then start the guided walkthrough "
+            f"of the full field-data-to-engineering-decision workflow.</p></div>",
             unsafe_allow_html=True,
         )
 
@@ -116,16 +140,21 @@ for i, title in enumerate(STEP_TITLES, start=1):
     elif i < step:
         color, weight = GOLD, "600"
     else:
-        color, weight = "#C9BFB4", "400"
+        color, weight = DISABLED, "400"
     pills.append(
         f"<span style='color:{color};font-weight:{weight};'>{i}. {title}</span>"
     )
+# SAFETY: HTML is entirely server-generated; no user input is interpolated.
 st.markdown(
-    "<div style='font-family:\"IBM Plex Mono\",monospace;font-size:0.85rem;"
+    '<div style=\'font-family:"IBM Plex Mono",monospace;font-size:0.85rem;'
     "margin-bottom:8px;'>" + " &nbsp;→&nbsp; ".join(pills) + "</div>",
     unsafe_allow_html=True,
 )
 st.progress(step / 4)
+
+if "presentation_error" in st.session_state:
+    st.error(f"Could not load sample data: {st.session_state['presentation_error']}")
+    st.session_state.pop("presentation_error", None)
 
 survey_df = st.session_state.get("survey_points")
 if survey_df is None or survey_df.empty:
@@ -169,8 +198,12 @@ elif step == 2:
         st.warning(tin_error)
     else:
         mesh = build_surface_mesh(survey_df, tin)
-        st.success(f"{mesh['n_triangles']} triangles generated from {len(survey_df)} points.")
-        st.plotly_chart(build_terrain_3d_figure(mesh, show_colorbar=True), width="stretch")
+        st.success(
+            f"{mesh['n_triangles']} triangles generated from {len(survey_df)} points."
+        )
+        st.plotly_chart(
+            build_terrain_3d_figure(mesh, show_colorbar=True), width="stretch"
+        )
 
 # ---------------------------------------------------------------------------
 # Step 3 — Contour Map
@@ -185,8 +218,13 @@ elif step == 3:
     if grid["error"]:
         st.warning(grid["error"])
     else:
-        st.success(f"Contour interval: 1.0 m — {grid['n_lines']} contour lines generated.")
-        st.plotly_chart(build_contour_figure(grid, interval=1.0, survey_df=survey_df), width="stretch")
+        st.success(
+            f"Contour interval: 1.0 m — {grid['n_lines']} contour lines generated."
+        )
+        st.plotly_chart(
+            build_contour_figure(grid, interval=1.0, survey_df=survey_df),
+            width="stretch",
+        )
 
 # ---------------------------------------------------------------------------
 # Step 4 — Engineering Decision
@@ -198,40 +236,20 @@ elif step == 4:
         "will water drain, and — for a proposed road — how much earth needs to be cut or filled."
     )
     elev = compute_elevation_stats(survey_df)
-    slope = compute_slope_stats(survey_df, tin) if not tin_error else {"error": tin_error}
-    elev_min, elev_max = float(survey_df["Elevation"].min()), float(survey_df["Elevation"].max())
-    sim = simulate_road_construction(survey_df, tin, round((elev_min + elev_max) / 2, 2)) if not tin_error else None
+    slope = (
+        compute_slope_stats(survey_df, tin) if not tin_error else {"error": tin_error}
+    )
+    elev_min, elev_max = (
+        float(survey_df["Elevation"].min()),
+        float(survey_df["Elevation"].max()),
+    )
+    sim = (
+        simulate_road_construction(survey_df, tin, round((elev_min + elev_max) / 2, 2))
+        if not tin_error
+        else None
+    )
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("**Elevation**")
-        st.markdown(
-            f"<span style='font-family:\"IBM Plex Mono\",monospace;font-size:1.3rem;color:{MAROON};'>"
-            f"{elev['elevation_difference']:.2f} m</span> relief",
-            unsafe_allow_html=True,
-        )
-    with col2:
-        st.markdown("**Slope**")
-        if slope.get("error"):
-            st.caption(slope["error"])
-        else:
-            badge_color = SLOPE_GROUP_COLORS[slope["slope_group"]]
-            st.markdown(
-                f"<span style='font-family:\"IBM Plex Mono\",monospace;font-size:1.3rem;color:{MAROON};'>"
-                f"{slope['average_slope_percent']:.1f}%</span> "
-                f"<span class='slope-badge' style='background-color:{badge_color};font-size:0.7rem;'>"
-                f"{slope['classification']}</span>",
-                unsafe_allow_html=True,
-            )
-    with col3:
-        st.markdown("**Road Earthwork**")
-        if sim:
-            net_label = "Net Cut" if sim["net_cut"] >= 0 else "Net Fill"
-            st.markdown(
-                f"<span style='font-family:\"IBM Plex Mono\",monospace;font-size:1.3rem;color:{MAROON};'>"
-                f"{abs(sim['net_cut']):.0f} m³</span> {net_label}",
-                unsafe_allow_html=True,
-            )
+    render_engineering_summary(elev, slope, sim, font_size="1.3rem")
 
     st.info(
         "This is the full workflow: **Field Survey Data → Coordinate Processing → "
@@ -273,7 +291,9 @@ if st.session_state["auto_advance_enabled"] and step < 4:
         _go_next()
         st.rerun()
     else:
-        st.caption(f"⏱ Auto-advancing in {remaining:.0f}s — untick Auto-advance to pause.")
+        st.caption(
+            f"⏱ Auto-advancing in {remaining:.0f}s — untick Auto-advance to pause."
+        )
         time.sleep(min(1.0, remaining))
         st.rerun()
 elif st.session_state["auto_advance_enabled"] and step == 4:

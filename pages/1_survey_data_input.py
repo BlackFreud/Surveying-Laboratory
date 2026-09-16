@@ -8,13 +8,13 @@ with validation and a PRS92 coordinate reference note.
 import pandas as pd
 import streamlit as st
 
-from modules.data_processing import (
-    load_manual_points,
-    load_csv_points,
-    validate_points,
-    summarize_points,
-)
 from modules.analysis import PRS92_ZONES
+from modules.data_processing import (
+    load_csv_points,
+    load_manual_points,
+    summarize_points,
+    validate_points,
+)
 
 st.subheader("Survey Data Input")
 st.caption("Enter survey points manually or upload a CSV file.")
@@ -26,8 +26,9 @@ with st.expander("Coordinate reference (PRS92)", expanded=False):
         index=2,  # Zone III (Luzon, Manila) as a common default
         key="prs92_zone",
         help="Informational only — coordinates below are used as entered "
-             "(local project grid) and are not reprojected.",
+        "(local project grid) and are not reprojected.",
     )
+    # SAFETY: HTML is entirely server-generated; no user input is interpolated.
     st.caption(
         f"Central meridian: {PRS92_ZONES[zone_name]}°E &nbsp;·&nbsp; "
         f"Philippine Reference System 1992 (PRS92), Clarke 1866 ellipsoid.",
@@ -95,6 +96,10 @@ elif raw_df is not None and not raw_df.empty:
         for issue in issues:
             st.markdown(f"- {issue}")
         st.info("Fix the issues above to proceed. The data below is shown as-entered.")
+
+        # Clear previously valid data so downstream pages don't use stale points
+        st.session_state.pop("survey_points", None)
+
         st.dataframe(raw_df, width="stretch")
     else:
         summary = summarize_points(raw_df)

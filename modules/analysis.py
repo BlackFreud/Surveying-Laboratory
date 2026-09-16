@@ -3,14 +3,87 @@ analysis.py
 
 Engineering analysis: elevation stats, slope classification,
 and drainage direction, derived from survey points and the TIN.
-
-Status: PHASE 4 implementation.
 """
 
+from __future__ import annotations
+
 import math
+from typing import TypedDict
+
 import numpy as np
 import pandas as pd
 from scipy.spatial import Delaunay
+
+# Max slope value (%) used in place of infinity for near-vertical faces.
+_MAX_SLOPE_PERCENT: float = 999.9
+
+
+# ---------------------------------------------------------------------------
+# TypedDict return types
+# ---------------------------------------------------------------------------
+class ElevationStats(TypedDict):
+    """Statistics about the highest and lowest survey points."""
+
+    highest_point: str | None
+    highest_elevation: float | None
+    lowest_point: str | None
+    lowest_elevation: float | None
+    elevation_difference: float | None
+
+
+class SlopeClassification(TypedDict):
+    """BSWM slope group classification result."""
+
+    group: str
+    name: str
+    label: str
+    pd705_forestland: bool
+
+
+class SlopeStats(TypedDict, total=False):
+    """Area-weighted average slope statistics from TIN triangles."""
+
+    average_slope_percent: float | None
+    classification: str | None
+    slope_group: str
+    slope_name: str
+    pd705_forestland: bool
+    n_triangles: int
+    error: str | None
+
+
+class DrainageResult(TypedDict):
+    """Estimated drainage direction from highest to lowest point."""
+
+    high_point: str
+    low_point: str
+    high_elevation: float
+    low_elevation: float
+    bearing: str
+    distance: float
+    high_xy: tuple[float, float]
+    low_xy: tuple[float, float]
+
+
+class CutFillTriangle(TypedDict):
+    """A single TIN triangle classified as cut or fill."""
+
+    x: list[float]
+    y: list[float]
+    type: str  # "cut" | "fill"
+
+
+class RoadSimResult(TypedDict, total=False):
+    """Cut/fill volume estimate for a proposed road elevation."""
+
+    cut_volume: float | None
+    fill_volume: float | None
+    net_cut: float | None
+    cut_area: float | None
+    fill_area: float | None
+    triangles: list[CutFillTriangle]
+    error: str | None
+
 
 # ---------------------------------------------------------------------------
 # Philippine standard reference values
@@ -45,7 +118,7 @@ PRS92_ZONES = {
 }
 
 
-def compute_elevation_stats(df: pd.DataFrame) -> dict:
+def compute_elevation_stats(df: pd.DataFrame) -> ElevationStats:
     """
     Returns highest/lowest point info and elevation difference.
 
@@ -56,8 +129,10 @@ def compute_elevation_stats(df: pd.DataFrame) -> dict:
     """
     if df is None or df.empty:
         return {
-            "highest_point": None, "highest_elevation": None,
-            "lowest_point": None, "lowest_elevation": None,
+            "highest_point": None,
+            "highest_elevation": None,
+            "lowest_point": None,
+            "lowest_elevation": None,
             "elevation_difference": None,
         }
 
@@ -73,7 +148,7 @@ def compute_elevation_stats(df: pd.DataFrame) -> dict:
     }
 
 
-def classify_slope(slope_percent: float) -> dict:
+def classify_slope(slope_percent: float) -> SlopeClassification:
     """
     Classify a slope percentage per the Philippine Bureau of Soils and Water
     Management (BSWM) slope grouping, used nationwide in Philippine land and
@@ -111,7 +186,7 @@ def classify_slope(slope_percent: float) -> dict:
     }
 
 
-def compute_slope_stats(df: pd.DataFrame, tin: Delaunay) -> dict:
+def compute_slope_stats(df: pd.DataFrame, tin: Delaunay) -> SlopeStats:
     """
     Compute the area-weighted average slope (%) across all TIN triangles.
 
@@ -122,7 +197,12 @@ def compute_slope_stats(df: pd.DataFrame, tin: Delaunay) -> dict:
 
     Returns dict: average_slope_percent, classification, n_triangles, error
     """
-    result = {"average_slope_percent": None, "classification": None, "n_triangles": 0, "error": None}
+    result: SlopeStats = {
+        "average_slope_percent": None,
+        "classification": None,
+        "n_triangles": 0,
+        "error": None,
+    }
 
     if df is None or df.empty or tin is None:
         result["error"] = "No terrain surface available."
@@ -146,15 +226,17 @@ def compute_slope_stats(df: pd.DataFrame, tin: Delaunay) -> dict:
         nx, ny, nz = normal
 
         # Planimetric (2D, X-Y projected) area of the triangle
-        area = 0.5 * abs((p2[0] - p1[0]) * (p3[1] - p1[1]) - (p3[0] - p1[0]) * (p2[1] - p1[1]))
+        area = 0.5 * abs(
+            (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p3[0] - p1[0]) * (p2[1] - p1[1])
+        )
 
         if area < 1e-9:
             continue  # degenerate sliver triangle, skip
 
         if abs(nz) < 1e-9:
-            slope_percent = float("inf")  # vertical face, treat as extremely steep
+            slope_percent = _MAX_SLOPE_PERCENT  # vertical; capped finite
         else:
-            slope_percent = (math.sqrt(nx ** 2 + ny ** 2) / abs(nz)) * 100
+            slope_percent = (math.sqrt(nx**2 + ny**2) / abs(nz)) * 100
 
         total_weighted_slope += slope_percent * area
         total_area += area
@@ -166,15 +248,17 @@ def compute_slope_stats(df: pd.DataFrame, tin: Delaunay) -> dict:
     avg_slope = total_weighted_slope / total_area
     classification = classify_slope(avg_slope)
 
-    result.update({
-        "average_slope_percent": avg_slope,
-        "classification": classification["label"],
-        "slope_group": classification["group"],
-        "slope_name": classification["name"],
-        "pd705_forestland": classification["pd705_forestland"],
-        "n_triangles": len(tin.simplices),
-        "error": None,
-    })
+    result.update(
+        {
+            "average_slope_percent": avg_slope,
+            "classification": classification["label"],
+            "slope_group": classification["group"],
+            "slope_name": classification["name"],
+            "pd705_forestland": classification["pd705_forestland"],
+            "n_triangles": len(tin.simplices),
+            "error": None,
+        }
+    )
     return result
 
 
@@ -191,7 +275,7 @@ def _azimuth_to_bearing(azimuth_deg: float) -> str:
         return f"N{360 - az:.0f}°W"
 
 
-def compute_drainage_direction(df: pd.DataFrame) -> dict:
+def compute_drainage_direction(df: pd.DataFrame) -> DrainageResult | dict:
     """
     Estimate the potential drainage direction as a straight line from the
     highest elevation point to the lowest elevation point.
@@ -209,7 +293,7 @@ def compute_drainage_direction(df: pd.DataFrame) -> dict:
     dx = low_row["Easting"] - high_row["Easting"]
     dy = low_row["Northing"] - high_row["Northing"]
 
-    distance = math.sqrt(dx ** 2 + dy ** 2)
+    distance = math.sqrt(dx**2 + dy**2)
     azimuth = math.degrees(math.atan2(dx, dy))  # 0=North, clockwise
 
     return {
@@ -224,7 +308,11 @@ def compute_drainage_direction(df: pd.DataFrame) -> dict:
     }
 
 
-def simulate_road_construction(df: pd.DataFrame, tin: Delaunay, road_elevation: float) -> dict:
+def simulate_road_construction(
+    df: pd.DataFrame,
+    tin: Delaunay,
+    road_elevation: float,
+) -> RoadSimResult:
     """
     Estimate cut/fill volumes for a proposed level road at `road_elevation`,
     using the average-end-area method over each TIN triangle: for each
@@ -239,9 +327,14 @@ def simulate_road_construction(df: pd.DataFrame, tin: Delaunay, road_elevation: 
         cut_area, fill_area, triangles (list of dicts with vertices + type
         for visualization), error
     """
-    result = {
-        "cut_volume": None, "fill_volume": None, "net_cut": None,
-        "cut_area": None, "fill_area": None, "triangles": [], "error": None,
+    result: RoadSimResult = {
+        "cut_volume": None,
+        "fill_volume": None,
+        "net_cut": None,
+        "cut_area": None,
+        "fill_area": None,
+        "triangles": [],
+        "error": None,
     }
 
     if df is None or df.empty or tin is None:
@@ -256,7 +349,7 @@ def simulate_road_construction(df: pd.DataFrame, tin: Delaunay, road_elevation: 
     fill_volume = 0.0
     cut_area = 0.0
     fill_area = 0.0
-    triangles = []
+    triangles: list[CutFillTriangle] = []
 
     for tri in tin.simplices:
         xs = [x[tri[0]], x[tri[1]], x[tri[2]]]
@@ -283,13 +376,15 @@ def simulate_road_construction(df: pd.DataFrame, tin: Delaunay, road_elevation: 
 
         triangles.append({"x": xs, "y": ys, "type": tri_type})
 
-    result.update({
-        "cut_volume": cut_volume,
-        "fill_volume": fill_volume,
-        "net_cut": cut_volume - fill_volume,
-        "cut_area": cut_area,
-        "fill_area": fill_area,
-        "triangles": triangles,
-        "error": None,
-    })
+    result.update(
+        {
+            "cut_volume": cut_volume,
+            "fill_volume": fill_volume,
+            "net_cut": cut_volume - fill_volume,
+            "cut_area": cut_area,
+            "fill_area": fill_area,
+            "triangles": triangles,
+            "error": None,
+        }
+    )
     return result

@@ -3,18 +3,36 @@ contour.py
 
 Generates engineering contour maps from the terrain surface by
 interpolating the irregular TIN onto a regular grid.
-
-Status: PHASE 3 implementation.
 """
 
+from __future__ import annotations
+
+from typing import TypedDict
+
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import streamlit as st
 from scipy.interpolate import griddata
 
 
+class ContourGrid(TypedDict, total=False):
+    """Interpolated elevation grid with computed contour levels."""
+
+    grid_x: npt.NDArray[np.float64] | None
+    grid_y: npt.NDArray[np.float64] | None
+    grid_z: npt.NDArray[np.float64] | None
+    levels: npt.NDArray[np.float64] | None
+    n_lines: int
+    error: str | None
+
+
 @st.cache_data(show_spinner=False)
-def generate_contour_grid(df: pd.DataFrame, interval: float, resolution: int = 100) -> dict:
+def generate_contour_grid(
+    df: pd.DataFrame,
+    interval: float,
+    resolution: int = 100,
+) -> ContourGrid:
     """
     Interpolate survey points onto a regular grid and compute contour levels.
 
@@ -24,13 +42,17 @@ def generate_contour_grid(df: pd.DataFrame, interval: float, resolution: int = 1
         resolution: number of grid cells along each axis.
 
     Returns:
-        dict with keys: grid_x (1D), grid_y (1D), grid_z (2D), levels (1D array),
-        n_lines (int), error (str or None). If error is set, other fields may
-        be empty/None.
+        ContourGrid with keys: grid_x (1D), grid_y (1D), grid_z (2D),
+        levels (1D array), n_lines (int), error (str or None).
+        If error is set, other fields may be empty/None.
     """
-    result = {
-        "grid_x": None, "grid_y": None, "grid_z": None,
-        "levels": None, "n_lines": 0, "error": None,
+    result: ContourGrid = {
+        "grid_x": None,
+        "grid_y": None,
+        "grid_z": None,
+        "levels": None,
+        "n_lines": 0,
+        "error": None,
     }
 
     if df is None or df.empty or len(df) < 3:
@@ -57,27 +79,32 @@ def generate_contour_grid(df: pd.DataFrame, interval: float, resolution: int = 1
 
     grid_z = griddata((x, y), z, (mesh_x, mesh_y), method="linear")
 
-    elev_min, elev_max = float(np.nanmin(grid_z)), float(np.nanmax(grid_z))
+    elev_min = float(np.nanmin(grid_z))
+    elev_max = float(np.nanmax(grid_z))
 
     if elev_max - elev_min < interval:
         result["error"] = (
-            f"Elevation range ({elev_min:.2f}-{elev_max:.2f} m) is smaller than "
-            f"the selected {interval} m interval, so no contour lines can be "
-            f"drawn. Try a smaller interval."
+            f"Elevation range ({elev_min:.2f}\u2013{elev_max:.2f} m) is "
+            f"smaller than the selected {interval} m interval, so no "
+            f"contour lines can be drawn. Try a smaller interval."
         )
-        result["grid_x"], result["grid_y"], result["grid_z"] = grid_x, grid_y, grid_z
+        result["grid_x"] = grid_x
+        result["grid_y"] = grid_y
+        result["grid_z"] = grid_z
         return result
 
     start = np.floor(elev_min / interval) * interval
     end = np.ceil(elev_max / interval) * interval
     levels = np.arange(start, end + interval, interval)
 
-    result.update({
-        "grid_x": grid_x,
-        "grid_y": grid_y,
-        "grid_z": grid_z,
-        "levels": levels,
-        "n_lines": len(levels),
-        "error": None,
-    })
+    result.update(
+        {
+            "grid_x": grid_x,
+            "grid_y": grid_y,
+            "grid_z": grid_z,
+            "levels": levels,
+            "n_lines": len(levels),
+            "error": None,
+        }
+    )
     return result

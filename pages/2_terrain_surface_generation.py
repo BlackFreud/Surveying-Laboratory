@@ -7,7 +7,7 @@ points and shows the 2D triangulation and 3D terrain surface.
 
 import streamlit as st
 
-from modules.terrain_model import generate_tin, build_surface_mesh
+from modules.terrain_model import build_surface_mesh, generate_tin
 from modules.viz import build_terrain_2d_figure, build_terrain_3d_figure
 
 st.subheader("Terrain Surface Generation")
@@ -27,7 +27,9 @@ else:
         st.error(error)
     else:
         mesh = build_surface_mesh(survey_df, tin)
-        st.success(f"Triangulation complete: {mesh['n_triangles']} triangles generated.")
+        st.success(
+            f"Triangulation complete: {mesh['n_triangles']} triangles generated."
+        )
 
         col_2d, col_3d = st.columns(2)
 
@@ -37,4 +39,6 @@ else:
 
         with col_3d:
             st.markdown("**3D View — Terrain Surface**")
-            st.plotly_chart(build_terrain_3d_figure(mesh, show_colorbar=True), width="stretch")
+            st.plotly_chart(
+                build_terrain_3d_figure(mesh, show_colorbar=True), width="stretch"
+            )

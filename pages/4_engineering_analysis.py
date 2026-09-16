@@ -8,15 +8,22 @@ Engineering Analysis page — elevation stats, BSWM slope classification
 import plotly.graph_objects as go
 import streamlit as st
 
-from modules.terrain_model import generate_tin
-from modules.contour import generate_contour_grid
 from modules.analysis import (
+    BSWM_SLOPE_GROUPS,
+    compute_drainage_direction,
     compute_elevation_stats,
     compute_slope_stats,
-    compute_drainage_direction,
-    BSWM_SLOPE_GROUPS,
 )
-from modules.viz import MAROON, GOLD, INK, SLOPE_GROUP_COLORS, build_contour_figure
+from modules.contour import generate_contour_grid
+from modules.terrain_model import generate_tin
+from modules.viz import (
+    GOLD,
+    INK,
+    MAROON,
+    MUTED,
+    SLOPE_GROUP_COLORS,
+    build_contour_figure,
+)
 
 st.subheader("Engineering Analysis")
 st.caption("Elevation, slope, and drainage insights derived from the terrain model.")
@@ -58,11 +65,14 @@ else:
             col1.metric("Average Slope", f"{slope['average_slope_percent']:.1f} %")
             with col2:
                 st.markdown("**Classification (BSWM)**")
-                bands = " &middot; ".join(f"{b['group']} {b['range']}" for b in BSWM_SLOPE_GROUPS)
+                bands = " &middot; ".join(
+                    f"{b['group']} {b['range']}" for b in BSWM_SLOPE_GROUPS
+                )
+                # SAFETY: HTML is entirely server-generated; no user input is interpolated.
                 st.markdown(
                     f"<span class='slope-badge' style='background-color:{badge_color};'>"
                     f"{slope['classification']}</span>"
-                    f"<div style='color:#6B5E58;font-size:0.8em;margin-top:6px;'>{bands}</div>",
+                    f"<div style='color:{MUTED};font-size:0.8em;margin-top:6px;'>{bands}</div>",
                     unsafe_allow_html=True,
                 )
             if slope["pd705_forestland"]:
@@ -91,17 +101,36 @@ else:
             hx, hy = drainage["high_xy"]
             lx, ly = drainage["low_xy"]
             fig.add_annotation(
-                x=lx, y=ly, ax=hx, ay=hy,
-                xref="x", yref="y", axref="x", ayref="y",
-                showarrow=True, arrowhead=3, arrowsize=1.5, arrowwidth=2,
+                x=lx,
+                y=ly,
+                ax=hx,
+                ay=hy,
+                xref="x",
+                yref="y",
+                axref="x",
+                ayref="y",
+                showarrow=True,
+                arrowhead=3,
+                arrowsize=1.5,
+                arrowwidth=2,
                 arrowcolor=INK,
             )
             fig.add_trace(
                 go.Scatter(
-                    x=[hx, lx], y=[hy, ly], mode="markers+text",
-                    marker=dict(size=9, color=[MAROON, GOLD], line=dict(color="white", width=1)),
-                    text=[f"High: {drainage['high_point']}", f"Low: {drainage['low_point']}"],
-                    textposition="top center", textfont=dict(size=10),
+                    x=[hx, lx],
+                    y=[hy, ly],
+                    mode="markers+text",
+                    marker={
+                        "size": 9,
+                        "color": [MAROON, GOLD],
+                        "line": {"color": "white", "width": 1},
+                    },
+                    text=[
+                        f"High: {drainage['high_point']}",
+                        f"Low: {drainage['low_point']}",
+                    ],
+                    textposition="top center",
+                    textfont={"size": 10},
                     showlegend=False,
                 )
             )

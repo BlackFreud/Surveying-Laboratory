@@ -15,7 +15,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from modules.viz import MAROON, TERRACOTTA, PAPER, INK
+from modules.viz import BORDER, INK, MAROON, MUTED, PAPER, TERRACOTTA
 
 # ---------------------------------------------------------------------------
 # Page configuration
@@ -43,6 +43,7 @@ CEE_LOGO_B64 = _img_to_base64("CEE_Logo.png")
 # ---------------------------------------------------------------------------
 # Global styling
 # ---------------------------------------------------------------------------
+# SAFETY: HTML is entirely server-generated; no user input is interpolated.
 st.markdown(
     f"""
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -64,7 +65,7 @@ st.markdown(
         }}
         [data-testid="stMetric"] {{
             background-color: white;
-            border: 1px solid #E5DFD5;
+            border: 1px solid {BORDER};
             border-left: 4px solid {MAROON};
             border-radius: 4px;
             padding: 12px 16px 8px 16px;
@@ -78,7 +79,7 @@ st.markdown(
             justify-content: space-between;
             gap: 24px;
             background-color: white;
-            border: 1px solid #E5DFD5;
+            border: 1px solid {BORDER};
             border-top: 5px solid {MAROON};
             border-radius: 4px;
             padding: 18px 28px;
@@ -103,7 +104,7 @@ st.markdown(
         .title-block-flow {{
             font-family: 'IBM Plex Mono', monospace;
             font-size: 0.78rem;
-            color: #6B5E58;
+            color: {MUTED};
             margin: 0;
         }}
         .slope-badge {{
@@ -128,6 +129,7 @@ st.markdown(
 # ---------------------------------------------------------------------------
 # Branding header — styled as an engineering drawing title block
 # ---------------------------------------------------------------------------
+# SAFETY: HTML is entirely server-generated; no user input is interpolated.
 st.markdown(
     f"""
     <div class="title-block">
@@ -148,13 +150,25 @@ st.markdown(
 # the manual sidebar-radio routing used in earlier phases)
 # ---------------------------------------------------------------------------
 pages = [
-    st.Page(PAGES_DIR / "6_dashboard.py", title="Exhibit Dashboard", icon="🏛️", default=True),
+    st.Page(
+        PAGES_DIR / "6_dashboard.py", title="Exhibit Dashboard", icon="🏛️", default=True
+    ),
     st.Page(PAGES_DIR / "7_presentation_mode.py", title="Presentation Mode", icon="🎬"),
     st.Page(PAGES_DIR / "1_survey_data_input.py", title="Survey Data Input", icon="📋"),
-    st.Page(PAGES_DIR / "2_terrain_surface_generation.py", title="Terrain Surface Generation", icon="⛰️"),
-    st.Page(PAGES_DIR / "3_contour_generation.py", title="Contour Generation", icon="🗺️"),
-    st.Page(PAGES_DIR / "4_engineering_analysis.py", title="Engineering Analysis", icon="📐"),
-    st.Page(PAGES_DIR / "5_scenario_simulation.py", title="Scenario Simulation", icon="🛣️"),
+    st.Page(
+        PAGES_DIR / "2_terrain_surface_generation.py",
+        title="Terrain Surface Generation",
+        icon="⛰️",
+    ),
+    st.Page(
+        PAGES_DIR / "3_contour_generation.py", title="Contour Generation", icon="🗺️"
+    ),
+    st.Page(
+        PAGES_DIR / "4_engineering_analysis.py", title="Engineering Analysis", icon="📐"
+    ),
+    st.Page(
+        PAGES_DIR / "5_scenario_simulation.py", title="Scenario Simulation", icon="🛣️"
+    ),
 ]
 pg = st.navigation(pages)
 

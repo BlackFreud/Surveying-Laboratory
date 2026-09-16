@@ -3,18 +3,33 @@ terrain_model.py
 
 Generates the Triangulated Irregular Network (TIN) and terrain
 surface from validated survey points.
-
-Status: PHASE 2 implementation.
 """
 
+from __future__ import annotations
+
+from typing import TypedDict
+
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import streamlit as st
-from scipy.spatial import Delaunay
+from scipy.spatial import Delaunay, QhullError
+
+
+class SurfaceMesh(TypedDict):
+    """Triangulated terrain surface data for 2D/3D plotting."""
+
+    x: npt.NDArray[np.float64]
+    y: npt.NDArray[np.float64]
+    z: npt.NDArray[np.float64]
+    triangles: npt.NDArray[np.intp]
+    n_triangles: int
 
 
 @st.cache_data(show_spinner=False)
-def generate_tin(df: pd.DataFrame):
+def generate_tin(
+    df: pd.DataFrame,
+) -> tuple[Delaunay | None, str | None]:
     """
     Build a Delaunay triangulation (TIN) from survey points.
 
@@ -39,7 +54,7 @@ def generate_tin(df: pd.DataFrame):
 
     try:
         tin = Delaunay(xy)
-    except Exception:
+    except (QhullError, ValueError):
         # Most commonly: all points are collinear (degenerate geometry),
         # which Delaunay cannot triangulate. The underlying Qhull error is
         # a low-level geometry dump, not useful to an end user, so we
@@ -55,11 +70,14 @@ def generate_tin(df: pd.DataFrame):
     return tin, None
 
 
-def build_surface_mesh(df: pd.DataFrame, tin: Delaunay) -> dict:
+def build_surface_mesh(
+    df: pd.DataFrame,
+    tin: Delaunay,
+) -> SurfaceMesh:
     """
     Package triangulation + elevation data for 2D/3D plotting.
 
-    Returns a dict with:
+    Returns a SurfaceMesh with:
         x, y, z        : coordinate arrays (Easting, Northing, Elevation)
         triangles      : (n_triangles, 3) array of point indices per triangle
         n_triangles    : triangle count

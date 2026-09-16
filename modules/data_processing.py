@@ -3,14 +3,26 @@ data_processing.py
 
 Handles survey point input, validation, and summary statistics
 for the Digital Terrain Model Simulator.
-
-Status: PHASE 1 implementation.
 """
 
-import pandas as pd
-import numpy as np
+from __future__ import annotations
 
-REQUIRED_COLUMNS = ["Point", "Easting", "Northing", "Elevation"]
+from typing import BinaryIO, TypedDict
+
+import numpy as np
+import pandas as pd
+
+REQUIRED_COLUMNS: list[str] = ["Point", "Easting", "Northing", "Elevation"]
+
+MAX_SURVEY_POINTS: int = 10_000
+
+
+class PointSummary(TypedDict):
+    """Summary statistics for a validated set of survey points."""
+
+    total_points: int
+    min_elevation: float | None
+    max_elevation: float | None
 
 
 def load_manual_points(df: pd.DataFrame) -> pd.DataFrame:
@@ -45,7 +57,9 @@ def load_manual_points(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def load_csv_points(uploaded_file) -> tuple[pd.DataFrame, str | None]:
+def load_csv_points(
+    uploaded_file: BinaryIO,
+) -> tuple[pd.DataFrame, str | None]:
     """
     Parse an uploaded CSV file of survey points.
 
@@ -59,8 +73,23 @@ def load_csv_points(uploaded_file) -> tuple[pd.DataFrame, str | None]:
     """
     try:
         df = pd.read_csv(uploaded_file)
-    except Exception as e:
+    except (
+        pd.errors.EmptyDataError,
+        pd.errors.ParserError,
+        UnicodeDecodeError,
+        ValueError,
+        OSError,
+    ) as e:
         return pd.DataFrame(columns=REQUIRED_COLUMNS), f"Could not read CSV file: {e}"
+
+    if len(df) > MAX_SURVEY_POINTS:
+        return (
+            pd.DataFrame(columns=REQUIRED_COLUMNS),
+            (
+                f"CSV contains {len(df):,} rows, which exceeds the "
+                f"{MAX_SURVEY_POINTS:,}-row limit for this application."
+            ),
+        )
 
     df.columns = [str(c).strip() for c in df.columns]
 
@@ -68,8 +97,10 @@ def load_csv_points(uploaded_file) -> tuple[pd.DataFrame, str | None]:
     if missing_cols:
         return (
             pd.DataFrame(columns=REQUIRED_COLUMNS),
-            f"CSV is missing required column(s): {', '.join(missing_cols)}. "
-            f"Expected columns: {', '.join(REQUIRED_COLUMNS)}",
+            (
+                f"CSV is missing required column(s): {', '.join(missing_cols)}. "
+                f"Expected columns: {', '.join(REQUIRED_COLUMNS)}"
+            ),
         )
 
     df["Point"] = df["Point"].astype(str).str.strip()
@@ -117,7 +148,7 @@ def validate_points(df: pd.DataFrame) -> list[str]:
     return issues
 
 
-def summarize_points(df: pd.DataFrame) -> dict:
+def summarize_points(df: pd.DataFrame) -> PointSummary:
     """
     Compute summary statistics for a validated set of survey points.
 

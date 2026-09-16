@@ -42,6 +42,11 @@ SAMPLE_DATASETS: list[SampleDataset] = [
         "path": DATA_DIR / "sample_4_um_matina_campus.csv",
         "description": "625 points \u00b7 32 m relief \u00b7 large real-campus grid survey",
     },
+    {
+        "label": "Sample 5 \u2014 Sample Number 5",
+        "path": DATA_DIR / "sample_5_random_elevation.csv",
+        "description": "625 points \u00b7 32 m relief \u00b7 large real-campus grid survey",
+    }
 ]
 
 # Validate that all bundled sample files exist at import time so a
